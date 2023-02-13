@@ -20,12 +20,20 @@ def upload_file(request):
     """
     try:
         if request.FILES['upload']:
+            
             upload = request.FILES['upload']
+
+            # save file to media folder
             fss=FileSystemStorage()
             file=fss.save(upload.name,upload)
             file_url = fss.url(file)
-            print(BASE_DIR)
+            # print(BASE_DIR)
+            # plot bar chart 
             df = pd.read_excel(f"{BASE_DIR}/{file_url}")
+            print(df['Std'].value_counts())
+            ax = df['Std'].value_counts().plot(kind='bar',figsize=(14,8),title="Standard wise child count").get_figure()
+            ax.savefig(f"{BASE_DIR}/media/bars/{upload.name[:-5]}.png")
+
             # print(df)
             file = FileHeader.objects.create(file_name=upload.name,file_url=file_url)
             for index,row in df.iterrows():
@@ -50,17 +58,18 @@ def get_file_data(request):
         else:
             file_id=int(file_id)
         
-        returnDict={}
         file = FileHeader.objects.get(file_id=file_id)
+        returnDict={}
         returnDict["filename"]=file.file_name
         returnDict["file_id"]=file.file_id
+        returnDict["image"]=f"{BASE_DIR}\\media\\bars\\{file.file_name[:-5]}.png"
         returnDict["rows"]=[]
         data = Uploads.objects.filter(file_id=file)
 
         for obj in data:
             returnDict["rows"].append({str(obj.row_id):{"name":obj.name,"age":obj.age,"district":obj.district,"std":obj.std,"date":obj.date}})
 
-        return Response({"data":returnDict,"message":"File data fetched Successfully..!"},status=status.HTTP_200_OK)
+        return Response({"data":returnDict,"message":"File data fetched Successfully..!","img":returnDict["image"]},status=status.HTTP_200_OK)
     except Exception as e:
         print("Exception : ",str(e))
         return Response({"message":f"Something went wrong. {e}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
